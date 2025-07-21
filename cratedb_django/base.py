@@ -153,9 +153,7 @@ def aggressively_refresh():
                 table_name = match.group(1)
                 return args[0].execute(f"refresh table {table_name}", None)
             return func
-
         return wrapper
-
     return deco
 
 
@@ -173,17 +171,18 @@ class CrateDBCursorWrapper(Cursor):
     """
 
     # todo pgdiff
-    @aggressively_refresh()
-    def execute(self, query, params=None):
+    # @aggressively_refresh()
+    def execute(self, query, params=None) -> None:
         if params is None:
             return super().execute(query)
+
         # Extract names if params is a mapping, i.e. "pyformat" style is used.
         param_names = list(params) if isinstance(params, Mapping) else None
         query = self.convert_query(query, param_names=param_names)
-        logging.warning(f"sent query: {query}, {params}")
+        logging.info(f"sent query: {query}, {params}")
         return super().execute(query, params)
 
-    def executemany(self, query, param_list):
+    def executemany(self, query, param_list) -> int | list | None:
         # Extract names if params is a mapping, i.e. "pyformat" style is used.
         # Peek carefully as a generator can be passed instead of a list/tuple.
         peekable, param_list = tee(iter(param_list))
@@ -191,11 +190,12 @@ class CrateDBCursorWrapper(Cursor):
             param_names = list(params)
         else:
             param_names = None
+
         query = self.convert_query(query, param_names=param_names)
-        logging.warning(f"sent query: {query}")
+        logging.info(f"sent query: {query}")
         return super().executemany(query, param_list)
 
-    def convert_query(self, query, *, param_names=None):
+    def convert_query(self, query, *, param_names=None) -> str:
         if param_names is None:
             # Convert from "format" style to "qmark" style.
             # todo pgdiff
